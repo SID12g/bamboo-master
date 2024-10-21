@@ -14,6 +14,9 @@ const radius = 281;
 let generation = 1;
 let startTime = Date.now();
 
+let L_Dx = 0;
+let L_Dy = 0;
+
 const getElapsedTime = () => {
   const currentTime = Date.now();
   const elapsedTime = (currentTime - startTime) / 1000;
@@ -43,84 +46,74 @@ class Cat {
       }
     }
 
+    const K = 5000;
     if (closestArrow) {
-      console.log(closestArrow);
+      console.log("Closest Arrow:", closestArrow); // closestArrow를 콘솔에 기록
       const inputs = [
-        this.x / p.width,
-        this.y / p.height,
-        closestArrow.x / p.width,
-        closestArrow.y / p.height,
-        closestArrow.vx,
-        closestArrow.vy,
+        this.x * K,
+        this.y * K,
+        closestArrow.x * K,
+        closestArrow.y * K,
+        closestArrow.vx * K,
+        closestArrow.vy * K,
       ];
+      console.log("Inputs:", inputs); // 입력값을 콘솔에 기록
+
       const output = this.brain.activate(inputs);
+      console.log("Output:", output); // 출력값을 콘솔에 기록
 
       // 출력 값을 콘솔에 기록
       console.log(
         `${this.index}번: Output: Up: ${output[0]}, Down: ${output[1]}, Left: ${output[2]}, Right: ${output[3]}, x: ${this.x}, y: ${this.y}`
       );
 
-      if (this.y > 0) {
-        this.y -= output[0] * 15;
+      const Dy = output[0] - output[1];
+      const Dx = output[2] - output[3];
+      if (Dy > 0 && this.y < p.height) {
+        this.y += Dy * 10;
+      } else if (Dy < 0 && this.y > 0) {
+        this.y += Dy * 10;
       }
-      if (this.y < p.height - catImage.height * catScalar) {
-        this.y += output[1] * 15;
+      if (Dx > 0 && this.x < p.width) {
+        this.x += Dx * 10;
+      } else if (Dx < 0 && this.x > 0) {
+        this.x += Dx * 10;
       }
-      if (this.x > 0) {
-        this.x -= output[2] * 15;
-      }
-      if (this.x < p.width - catImage.width * catScalar) {
-        this.x += output[3] * 15;
-      }
-    }
 
-    const distFromCenter = p.dist(this.x, this.y, p.width / 2, p.height / 2);
-    if (distFromCenter + (catImage.width * catScalar) / 2 > radius) {
-      const angle = Math.atan2(this.y - p.height / 2, this.x - p.width / 2);
-      this.x =
-        p.width / 2 +
-        (radius - (catImage.width * catScalar) / 2) * Math.cos(angle);
-      this.y =
-        p.height / 2 +
-        (radius - (catImage.width * catScalar) / 2) * Math.sin(angle);
+      // 원의 중심에서 이탈하는 것을 방지
+      const centerX = p.width / 2;
+      const centerY = p.height / 2;
+      const radius = Math.min(p.width, p.height) / 2;
+
+      const distanceFromCenter = Math.sqrt(
+        (this.x - centerX) ** 2 + (this.y - centerY) ** 2
+      );
+
+      if (distanceFromCenter > radius) {
+        const angle = Math.atan2(this.y - centerY, this.x - centerX);
+        this.x = centerX + radius * Math.cos(angle);
+        this.y = centerY + radius * Math.sin(angle);
+      }
     }
   }
 }
-
 const setupNeuralNetwork = () => {
   const inputLayer = new Layer(6);
-  const hiddenLayer1 = new Layer(16);
-  const hiddenLayer2 = new Layer(16);
-  const hiddenLayer3 = new Layer(16);
-  const hiddenLayer4 = new Layer(16);
-  const hiddenLayer5 = new Layer(16);
-  const hiddenLayer6 = new Layer(16);
+  const hiddenLayer1 = new Layer(8);
   const outputLayer = new Layer(4);
 
   inputLayer.project(hiddenLayer1);
-  hiddenLayer1.project(hiddenLayer2);
-  hiddenLayer2.project(hiddenLayer3);
-  hiddenLayer3.project(hiddenLayer4);
-  hiddenLayer4.project(hiddenLayer5);
-  hiddenLayer5.project(hiddenLayer6);
-  hiddenLayer6.project(outputLayer);
+
+  hiddenLayer1.project(outputLayer);
 
   const network = new Network({
     input: inputLayer,
-    hidden: [
-      hiddenLayer1,
-      hiddenLayer2,
-      hiddenLayer3,
-      hiddenLayer4,
-      hiddenLayer5,
-      hiddenLayer6,
-    ],
+    hidden: [hiddenLayer1],
     output: outputLayer,
   });
 
   return network;
 };
-
 // const generateCats = (brain1, brain2) => {
 //   generation++;
 //   cats = [];
@@ -179,6 +172,7 @@ const generateCats = (brain1, brain2) => {
     const newCat = new Cat(281, 281, i);
     newCat.brain = newBrain; // 새로운 신경망을 적용
     cats.push(newCat);
+    console.log(newCat.brain);
   }
 };
 
